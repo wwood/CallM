@@ -10,8 +10,8 @@ Central to CallM is the jpath file format, which aims to encapsulate annotation 
 
 * **proteins** units of translation
 * **components** equivalent to protein complexes
-* **units** ? a group of proteins that carry out a certain function ?
-* **homology** groups_ proteins that share primary sequence similarity, and possibly function (but not necessarily)
+* **units** a group of proteins that carry out a certain function ?
+* **homology groups** proteins that share primary sequence similarity, and possibly function (but not necessarily)
 * **pathways** sets of units that constitute a conceptual metabolic pathway, preferably a linear series of enzymes
 
 ## Copyright
