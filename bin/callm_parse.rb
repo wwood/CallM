@@ -5,6 +5,10 @@ require 'bio-logger'
 require 'json'
 require 'csv'
 require 'entrez'
+require 'pp'
+
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
+require 'callm'
 
 SCRIPT_NAME = File.basename(__FILE__); LOG_NAME = SCRIPT_NAME.gsub('.rb','')
 
@@ -36,9 +40,9 @@ o = OptionParser.new do |opts|
     that encompasses the information given. Print the new .jpath file to STDOUT.\n\n"
 
   opts.separator "\Required:\n\n"
-  opts.on("-t", "--type  TYPE", "One of 'proteins' or 'pathways'") do |arg|
-    if !possible_types.include?(arg)
-      raise "Unexpected type given. Expected one of #{possible_types.join(', ')}, found '#{arg}'"
+  opts.on("-t", "--type  TYPE", "One of '#{possible_parse_types.join("', '")}'") do |arg|
+    if !possible_parse_types.include?(arg)
+      raise "Unexpected type given. Expected one of #{possible_parse_types.join(', ')}, found '#{arg}'"
     end
     options[:type] = arg
   end
@@ -73,7 +77,13 @@ jpath = CallM::Jpath.new
 case options[:type]
 when PROTEIN_PARSE
   CSV.foreach(options[:csv], :headers => true) do |row|
-    next if row[0].match(/^\s*\#/) #Skip comment lines
+    if row[0].match(/^\s*\#/) #Skip comment lines
+      log.debug "Skipping line #{row.inspect} as a comment line"
+      next
+    end
+
+    log.debug "Parsing line: #{row.inspect}"
+
     unless row.length > 4
       fail_parse "Expected more columns in CSV file, found a row with #{row.length} cells: #{row.inspect}"
     end
@@ -89,7 +99,6 @@ when PROTEIN_PARSE
     # Homology group (e.g. particulate monooxygenase subunit A)
     homology_group = row[1]
     homology_group ||= ''
-    homology_group.strip!
     if homology_group == ''
       fail_parse "Homology group is required, failed to find one in this row: #{row.inspect}"
     end
@@ -127,25 +136,30 @@ when PROTEIN_PARSE
     component ||= jpath.add_component(function)
     component.add_protein protein
 
-    hom = jpath.get_homology_group(homology_group)
-    hom ||= jpath.add_homology_group(homology_group)
-    unless hom.components.include?(component)
-      hom.add_component component
-    end
+#    hom = jpath.get_homology_group(homology_group)
+#    hom ||= jpath.add_homology_group(homology_group)
+#    unless hom.components.include?(component)
+#      hom.add_component component
+#    end
 
     if protein.sequence.nil? #Always true?
+      log.debug "Fetching sequence #{sequence_id} from GenBank protein"
       fa = Entrez.EFetch('protein', id: sequence_id, retmode: :fasta)
       if fa.nil?
         log.error "Unable to fetch sequence for #{sequence_id}, skipping"
       else
+        #TODO: check that the sequence being downloaded is in protein format, not nucleotide format
         protein.sequence = Bio::FastaFormat.new(fa).seq
       end
     end
+
+    break
   end
 else
   raise "handling of type #{options[:type]} not yet implemented"
 end
 
+pp jpath.to_json
 
 
 
