@@ -16,6 +16,7 @@ SCRIPT_NAME = File.basename(__FILE__); LOG_NAME = SCRIPT_NAME.gsub('.rb','')
 options = {
   :logger => 'stderr',
   :log_level => 'info',
+  :skip_sequence_download => false,
 }
 
 #PATHWAY = 'pathway'
@@ -29,8 +30,8 @@ UNIT_PARSE = 'unit'
 
 possible_parse_types = [
   PROTEIN_PARSE,
-  PATHWAY_PARSE,
-  UNIT_PARSE,
+  #PATHWAY_PARSE,
+  #UNIT_PARSE,
 ]
 o = OptionParser.new do |opts|
   opts.banner = "
@@ -50,10 +51,10 @@ o = OptionParser.new do |opts|
     options[:csv] = arg
   end
 
-#  opts.separator "\nOptional:\n\n"
-#  opts.on("-p", "--previous-jpath PATH_TO_JPATH_FILE", "Don't start a new jpath file, build upon this one [default: none, create a new jpath file]") do |arg|
-#    options[:previous_jpath] = arg
-#  end
+  opts.separator "\nOptional:\n\n"
+  opts.on("--skip-sequence-download", "Don't download sequences from their respective sources [default: #{options[:skip_sequence_download]}]") do |arg|
+    options[:skip_sequence_download] = true
+  end
 
   # logger options
   opts.separator "\nVerbosity:\n\n"
@@ -136,15 +137,18 @@ when PROTEIN_PARSE
     component ||= jpath.add_component(function)
     component.add_protein protein
 
-#    hom = jpath.get_homology_group(homology_group)
-#    hom ||= jpath.add_homology_group(homology_group)
-#    unless hom.components.include?(component)
-#      hom.add_component component
-#    end
+    hom = jpath.get_homology_group_by_name(homology_group)
+    hom ||= jpath.add_homology_group(homology_group)
+    unless hom.components.include?(component)
+      hom.add_component component
+    end
 
-    if protein.sequence.nil? #Always true?
+    if protein.sequence.nil? and !options[:skip_sequence_download]
       log.debug "Fetching sequence #{sequence_id} from GenBank protein"
       fa = Entrez.EFetch('protein', id: sequence_id, retmode: :fasta)
+      #TODO: Get this download working right.
+      p fa
+      exit
       if fa.nil?
         log.error "Unable to fetch sequence for #{sequence_id}, skipping"
       else
@@ -152,14 +156,12 @@ when PROTEIN_PARSE
         protein.sequence = Bio::FastaFormat.new(fa).seq
       end
     end
-
-    break
   end
 else
   raise "handling of type #{options[:type]} not yet implemented"
 end
 
-pp jpath.to_json
+pp jpath.to_s
 
 
 

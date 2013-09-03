@@ -8,21 +8,22 @@ module CallM
   class Jpath
     attr_reader :json
 
-    attr_reader :proteins
+    attr_reader :proteins, :components, :units, :pathways, :homology_groups
 
     def initialize
-      @json = {}
-      @json['pathways'] = []
-      @json['homology groups'] = []
-      @json['units'] = []
-      @json['components'] = []
-      @json['proteins'] = []
+      @proteins = []
+      @components = []
+      @units = []
+      @pathways = []
+      @homology_groups = []
     end
 
     def to_s
       #TODO: need to convert proteins
-      @json['proteins'] = @proteins.collect{|pro| pro.to_json}
-      JSON.dump @json
+      json = {}
+      json['proteins'] = @proteins.collect{|pro| pro.to_json}
+      json['components'] = @components.collect{|pro| pro.to_json}
+      json
     end
 
     def add_protein(sequence_id, pubmed_id, function, source, other_attributes={})
@@ -34,15 +35,13 @@ module CallM
     end
 
     def next_callm_accession(type)
-      things = @json[type.to_s]
-      return 1 if things.nil?
-      max_one = things.max {|c1,c2| c1.callm_numeric_id <=> c2.callm_numeric_id}
-      return max_one.callm_numeric_id+1
+      #TODO: ensure that another accession with the same number is not known, locally at least
+      return rand(9999999999)
     end
 
     def add_component(name, other_attributes={})
       # Make sure that another component of the same name
-      if @json['components'] and @json['components'].find{|c| c.name == name}
+      if @components.find{|c| c.name == name}
         raise MalformedException, "A component of the name #{name} already exists in this jpath object"
       end
 
@@ -50,14 +49,25 @@ module CallM
       component = Component.new attrs
       component['accession'] = next_callm_accession :component
 
-      @json['components'] ||= []
-      @json['components'].push component.to_json
+      @components.push component
 
       return component
     end
 
     def get_component(name)
-      @json['components'].find{|c| c.name == name}
+      @components.find{|c| c.name == name}
+    end
+
+    def get_homology_group_by_name(name)
+      return nil if @homology_groups.nil?
+      return @homology_groups.find{|h| h.name == name}
+    end
+
+    def add_homology_group(name)
+      @homology_groups ||= []
+      new_homology_group = HomologyGroup.new name
+      @homology_groups.push new_homology_group
+      return new_homology_group
     end
 
 
@@ -82,7 +92,7 @@ module CallM
 
       def to_json
         #TODO: need to include proteins here as well?
-        JSON.dump @properties
+        @properties
       end
 
       def add_protein(protein)
@@ -92,6 +102,10 @@ module CallM
 
       def []=(key, value)
         @properties[key] = value
+      end
+
+      def name
+        @properties['name']
       end
     end
 
@@ -114,7 +128,7 @@ module CallM
 
       def sequence=(seq)
         # TODO: Ensure that the sequence is a protein sequence, not a nucleotide one, not random rubbish string
-        sequence = seq
+        @sequence = seq
       end
 
       def to_json
@@ -129,7 +143,25 @@ module CallM
         @other_properties.each do |key, value|
           json[key] = value
         end
+        if @sequence
+          json['sequence'] = @sequence
+        end
         json
+      end
+    end
+
+    class HomologyGroup
+      attr_accessor :name
+
+      attr_reader :components
+
+      def initialize(name)
+        @name = name
+        @components = []
+      end
+
+      def add_component(component)
+        @components.push component
       end
     end
   end
