@@ -8,7 +8,7 @@ It is currently in development, and is not ready for public consumption.
 
 Central to CallM is the jpath file format, which aims to encapsulate annotation in so that it can be used and shared. It is itself a json format to simplify parsing. It has several parts:
 
-* **units** roughly equivalent to a proteins (translated sequences)
+* **units** roughly equivalent to a protein (translated sequences)
 * **components** roughly equivalent to protein complexes
 * **homology groups** proteins that share primary sequence similarity, and possibly function (but not necessarily)
 * **pathways** sets of units that constitute a conceptual metabolic pathway, preferably a linear series of steps,
